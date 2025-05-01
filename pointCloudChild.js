@@ -9,13 +9,12 @@ const pointCloudPackage = require('./pointcloud.node');
 
 console.log(fastdds);
 console.log(pointCloudPackage);
-const TOPIC = 'ENS-PREC7680/LivePointCloudTest';
+const TOPIC = 'TVL-PREC7670/LivePointCloudTest';
 
 let participant = null;
 let terminateCondition = null;
 let dataReader = null;
 let waitSet = null;
-let pointCloud = new pointCloudPackage.PointCloud();
 // console.log('PointCloud: ', pointCloudPackage);
 initSubscriber();
 run();
@@ -31,8 +30,7 @@ function initSubscriber() {
     console.log('Error creating participant');
     return;
   }
-  console.log('------------------');
-
+  
   // Create the subscriber
   const subQos = new fastdds.SubscriberQos();
   const subscriber = participant.create_subscriber(subQos, null, fastdds.StatusMask.none());
@@ -59,6 +57,8 @@ function initSubscriber() {
 }
 
 async function run() {
+  let pointCloud = new pointCloudPackage.PointCloud();
+
   console.log('Running subscriber...');
   while (true) {
     const triggered_conditions = new fastdds.ConditionSeq();
@@ -127,7 +127,7 @@ async function run() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 50)); // ms
+    await new Promise((resolve) => setTimeout(resolve, 10)); // ms
   }
 }
 
@@ -170,7 +170,7 @@ function readValue(buffer, offset, datatype) {
 let lastProcessedTime = 0;
 const PROCESS_INTERVAL_MS = 1000; // 1 second
 function processPointCloud(pointCloud) {
-  console.log('Processing point cloud...');
+  // console.log('Processing point cloud...');
   // const now = Date.now()
   // if (now - lastProcessedTime < PROCESS_INTERVAL_MS) {
   //   return // skip this one
@@ -183,13 +183,11 @@ function processPointCloud(pointCloud) {
   const data = pointCloud.data();
   const size = data.size();
   const fields = pointCloud.fields();
-  const rawData = [];
-
+  const rawData = new Uint8Array(size);
   for (let i = 0; i < size; i++) {
-    rawData.push(data.get(i)); // get raw byte
+    rawData[i] = data.get(i);
   }
-
-  const buffer = Buffer.from(rawData); // convert to Buffer
+  const buffer = Buffer.from(rawData.buffer);
   const numPoints = Math.floor(buffer.length / pointStep); // calculate number of points
 
   const FORMAT_X = 1;
@@ -204,7 +202,7 @@ function processPointCloud(pointCloud) {
   const fieldG = getFieldOffset(fields, FORMAT_RGB);
   const fieldB = getFieldOffset(fields, FORMAT_RGB);
 
-  const points = [];
+  const points = new Array(numPoints);
 
   for (let i = 0; i < numPoints; i++) {
     const offset = i * pointStep;
@@ -217,7 +215,7 @@ function processPointCloud(pointCloud) {
     const g = readValue(buffer, offset + fieldG.offset + 8, fieldG.datatype);
     const b = readValue(buffer, offset + fieldB.offset + 16, fieldB.datatype);
 
-    points.push({ x, y, z, r, g, b });
+    points[i] = { x, y, z, r, g, b };
   }
 
   process.send([points]);
