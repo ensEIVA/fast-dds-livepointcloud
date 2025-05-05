@@ -2,16 +2,15 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { ChildProcess, fork } from 'child_process';
-import { resolve } from 'path';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
-
+let mainWindow:BrowserWindow = null;
 const createWindow = () => {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
@@ -55,9 +54,6 @@ app.on('activate', () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 
-
-
-
 // ...
 let worker:ChildProcess = null;
 
@@ -70,14 +66,14 @@ ipcMain.handle('subscribe', async (event) => {
   console.log('Worker started');
   
 
-  const handler = (incomingDataFromWorker) => {
+  const handler = (pointCloudDataFromWorker) => {
     
-    if (typeof incomingDataFromWorker === 'string') {
-      console.log('string', incomingDataFromWorker);
+    if (typeof pointCloudDataFromWorker === 'string') {
+      console.log(pointCloudDataFromWorker);
  
     } else {
-      console.log(incomingDataFromWorker);
-
+      // console.log(pointCloudDataFromWorker);
+      mainWindow.webContents.send('point-cloud-data', pointCloudDataFromWorker);
     }
   };
   worker.addListener('message', handler);
